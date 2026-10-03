@@ -12,10 +12,10 @@ import (
 // NewRouter arma el router con los middlewares y las rutas del servicio.
 //
 // Importante: GET /{code} es un wildcard en la raíz, así que toda ruta fija
-// (/health, /bookings, y en adelante /acks) debe quedar registrada antes.
+// (/health, /bookings, /acks) debe quedar registrada antes.
 // Además el service valida el formato ^[a-z0-9]{5}$, con lo cual una ruta
 // desconocida más larga nunca se confunde con un código.
-func NewRouter(bookings *BookingHandler) http.Handler {
+func NewRouter(bookings *BookingHandler, deliveries *DeliveryHandler) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -25,6 +25,8 @@ func NewRouter(bookings *BookingHandler) http.Handler {
 
 	r.Get("/health", health)
 	r.Post("/bookings", bookings.Create)
+	r.Post("/acks", deliveries.Ack)
+	r.Get("/bookings/{code}/delivery", deliveries.Status)
 
 	// Wildcard al final.
 	r.Get("/{code}", bookings.Get)

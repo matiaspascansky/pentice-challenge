@@ -8,13 +8,23 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
+	"pentice-challenge/internal/client"
 	"pentice-challenge/internal/config"
 	"pentice-challenge/internal/handler"
 	"pentice-challenge/internal/repository/file"
 	"pentice-challenge/internal/service"
+	"pentice-challenge/internal/worker"
+)
+
+const (
+	// workerBatch es cuántas entregas vencidas se toman por tick.
+	workerBatch = 100
+	// workerConcurrency es el tamaño del pool de intentos simultáneos.
+	workerConcurrency = 4
 )
 
 func main() {
@@ -43,11 +53,35 @@ func run() error {
 	}
 
 	bookings := service.NewBookingService(repo, service.CryptoCodeGenerator{})
-	bookingHandler := handler.NewBookingHandler(bookings)
+	deliveries := service.NewDeliveryService(
+		repo,
+		client.NewWebhookNotifier(cfg.GuestWebhookURL),
+		cfg.BackoffBase,
+		cfg.BackoffMax,
+		cfg.NotifyTimeout,
+	)
+
+	// El worker arranca antes del server: si quedaron entregas pendientes de
+	// una corrida anterior, se retoman enseguida.
+	deliveryWorker := worker.New(deliveries, worker.Config{
+		Tick:        cfg.WorkerTick,
+		Batch:       workerBatch,
+		Concurrency: workerConcurrency,
+	})
+
+	var workers sync.WaitGroup
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		deliveryWorker.Run(ctx)
+	}()
 
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           handler.NewRouter(bookingHandler),
+		Addr: ":" + cfg.Port,
+		Handler: handler.NewRouter(
+			handler.NewBookingHandler(bookings),
+			handler.NewDeliveryHandler(deliveries),
+		),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -68,5 +102,10 @@ func run() error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+
+	// Primero dejamos de aceptar requests, después esperamos a que el worker
+	// termine los intentos que tiene en vuelo.
+	err = srv.Shutdown(shutdownCtx)
+	workers.Wait()
+	return err
 }

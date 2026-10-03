@@ -27,3 +27,10 @@ type Delivery struct {
 	LastError     string         `json:"lastError,omitempty"`
 	AckedAt       *time.Time     `json:"ackedAt,omitempty"`
 }
+
+// Notification es el payload que recibe el dispositivo del huésped.
+// Deliberadamente mínimo: el código y la reserva a la que corresponde.
+type Notification struct {
+	Code          string `json:"confirmationCode"`
+	ReservationID string `json:"reservationId"`
+}
