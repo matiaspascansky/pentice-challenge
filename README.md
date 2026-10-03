@@ -2,7 +2,7 @@
 
 Cuando un huésped completa una reserva, el sistema genera un **código de confirmación** de 5 caracteres alfanuméricos. El código **no viaja en la respuesta del POST**: se entrega *out-of-band* al dispositivo del huésped, que puede estar offline, así que el servidor **reintenta hasta recibir un ack**. El huésped **nunca ve la misma confirmación dos veces**.
 
-Stack: **Go + [chi](https://github.com/go-chi/chi)**. Sin base de datos, sin colas, sin Redis: alcanza con goroutines, un ticker y un archivo.
+Stack: **Go + [chi](https://github.com/go-chi/chi)**. Sin base de datos, sin colas, sin Redis.
 
 ---
 
