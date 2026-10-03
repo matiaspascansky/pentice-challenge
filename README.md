@@ -301,10 +301,3 @@ Lo que está acá es deliberadamente lo más simple que cumple la consigna. En p
 2. ¿Los códigos tienen que ser case-sensitive?
 3. ¿Un POST repetido con el mismo `reservationId` debe ser idempotente, o cada llamada es una reserva nueva?
 4. ¿Hace falta un máximo de intentos y una DLQ, o reintentar indefinidamente es el comportamiento deseado?
-
----
-
-## Tiempo invertido
-
-<!-- TODO: confirmá este número antes de entregar. -->
-Aproximadamente **1 hora**, sobre un time-box de 4: ~20 minutos de diseño y escritura del plan, y ~45 minutos de implementación en seis etapas (esqueleto → persistencia → API → entrega y reintentos → dispositivo simulado → tests y documentación), verificando cada una antes de pasar a la siguiente.
