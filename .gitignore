@@ -1,0 +1,14 @@
+# Estado de runtime del store (no es código)
+/data/
+
+# Binarios compilados
+/server
+/guest
+*.exe
+
+# macOS / editores
+.DS_Store
+.idea/
+
+# Plan de implementación (local, no se publica)
+booking-confirmation-plan.md
