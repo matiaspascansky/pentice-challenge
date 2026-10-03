@@ -2,9 +2,11 @@
 /data/
 
 # Binarios compilados
-/server
-/guest
+/bin/
 *.exe
+
+# Cobertura
+coverage.out
 
 # macOS / editores
 .DS_Store
