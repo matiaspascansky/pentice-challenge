@@ -299,3 +299,20 @@ Lo que está acá es deliberadamente lo más simple que cumple la consigna. En p
 
 1. ¿Un POST repetido con el mismo `reservationId` debe ser idempotente, o cada llamada es una reserva nueva?
 2. ¿Hace falta un máximo de intentos y una DLQ, o reintentar indefinidamente es el comportamiento deseado?
+
+---
+
+## Tiempo invertido
+
+Alrededor de **3 horas y media**, dentro del time-box de 4:
+
+- **45 min** de diseño: definir el enfoque de entrega, evaluar alternativas para
+  los reintentos y el ack, y escribir el plan.
+- **~50 min** de implementación.
+- **2 horas** de revisión: leer el código completo, cuestionar decisiones,
+  renombrar lo que no se entendía solo y unificar el formato de las respuestas
+  de error.
+
+Usé asistencia de IA para escribir el código y los tests. Dediqué más tiempo a
+revisarlo que a escribirlo, y las decisiones documentadas arriba las puedo
+justificar una por una.
