@@ -23,6 +23,11 @@ func NewRouter(bookings *BookingHandler, deliveries *DeliveryHandler) http.Handl
 	r.Use(middleware.Recoverer)
 	r.Use(accessLog)
 
+	// Sin esto, chi responde los 404 con texto plano ("404 page not found") y
+	// los 405 con el cuerpo vacío, rompiendo el contrato JSON de la API.
+	r.NotFound(notFound)
+	r.MethodNotAllowed(methodNotAllowed)
+
 	r.Get("/health", health)
 	r.Post("/bookings", bookings.Create)
 	r.Post("/acks", deliveries.Ack)
@@ -32,6 +37,14 @@ func NewRouter(bookings *BookingHandler, deliveries *DeliveryHandler) http.Handl
 	r.Get("/{code}", bookings.Get)
 
 	return r
+}
+
+func notFound(w http.ResponseWriter, _ *http.Request) {
+	writeError(w, http.StatusNotFound, "resource not found")
+}
+
+func methodNotAllowed(w http.ResponseWriter, r *http.Request) {
+	writeError(w, http.StatusMethodNotAllowed, r.Method+" is not allowed on this resource")
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {

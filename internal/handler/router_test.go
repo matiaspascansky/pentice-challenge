@@ -244,6 +244,51 @@ func TestDeliveryStatus(t *testing.T) {
 	}
 }
 
+// Todos los errores salen con la misma forma, incluidos los que antes
+// resolvían los handlers por defecto del router con texto plano o sin cuerpo.
+func TestErrorsShareTheSameShape(t *testing.T) {
+	router := newTestServer(t, "a2b34")
+
+	tests := map[string]struct {
+		method, path, body string
+		want               int
+	}{
+		"ruta inexistente":   {http.MethodGet, "/ruta/inexistente/profunda", "", http.StatusNotFound},
+		"método no admitido": {http.MethodDelete, "/bookings", "", http.StatusMethodNotAllowed},
+		"código inválido":    {http.MethodGet, "/abc", "", http.StatusBadRequest},
+		"código inexistente": {http.MethodGet, "/zzzzz", "", http.StatusNotFound},
+		"body inválido":      {http.MethodPost, "/bookings", "{", http.StatusBadRequest},
+		"ack inexistente":    {http.MethodPost, "/acks", `{"confirmationCode":"zzzzz"}`, http.StatusNotFound},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			rec := do(t, router, tc.method, tc.path, tc.body)
+
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d", rec.Code, tc.want)
+			}
+			if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+				t.Errorf("content-type = %q, want application/json", ct)
+			}
+
+			var body struct {
+				Status  int    `json:"status"`
+				Message string `json:"message"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decoding %q: %v", rec.Body.String(), err)
+			}
+			if body.Status != tc.want {
+				t.Errorf("body status = %d, want %d (igual al de la respuesta)", body.Status, tc.want)
+			}
+			if body.Message == "" {
+				t.Error("message vacío")
+			}
+		})
+	}
+}
+
 // Las rutas fijas tienen que ganarle al wildcard GET /{code}.
 func TestFixedRoutesWinOverTheWildcard(t *testing.T) {
 	router := newTestServer(t, "healt") // un código de 5 chars parecido a /health

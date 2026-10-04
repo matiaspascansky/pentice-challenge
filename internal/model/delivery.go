@@ -2,20 +2,12 @@ package model
 
 import "time"
 
-// DeliveryStatus es el estado operativo de la entrega del código al huésped.
-//
-//	pending ──intento──▶ sent ──ack──▶ acked
-//	                      │  ▲
-//	                      └──┘ sin ack → reintento con backoff
 type DeliveryStatus string
 
 const (
-	// DeliveryPending: nunca se intentó entregar.
 	DeliveryPending DeliveryStatus = "pending"
-	// DeliverySent: se intentó al menos una vez, esperando el ack del dispositivo.
-	DeliverySent DeliveryStatus = "sent"
-	// DeliveryAcked: el dispositivo confirmó. Estado terminal.
-	DeliveryAcked DeliveryStatus = "acked"
+	DeliverySent    DeliveryStatus = "sent"
+	DeliveryAcked   DeliveryStatus = "acked"
 )
 
 // Delivery es la tarea de avisarle al huésped. Cambia de estado hasta el ack.
@@ -28,8 +20,6 @@ type Delivery struct {
 	AckedAt       *time.Time     `json:"ackedAt,omitempty"`
 }
 
-// Notification es el payload que recibe el dispositivo del huésped.
-// Deliberadamente mínimo: el código y la reserva a la que corresponde.
 type Notification struct {
 	Code          string `json:"confirmationCode"`
 	ReservationID string `json:"reservationId"`
