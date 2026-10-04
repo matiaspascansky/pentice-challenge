@@ -1,12 +1,3 @@
-// Command guest simula el dispositivo del huésped: recibe las notificaciones
-// del servidor y las ackea.
-//
-// Es la contraparte necesaria del at-least-once del servidor. Como el ack
-// puede perderse, el servidor reenvía; el dispositivo deduplica por código y
-// re-ackea los duplicados para cortar el loop. Ahí está la garantía que pide
-// la consigna: el huésped nunca *ve* la misma confirmación dos veces, aunque
-// la reciba varias.
-//
 // Flags de falla para la demo: --offline, --drop-rate, --ack-loss-rate.
 package main
 

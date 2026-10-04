@@ -31,11 +31,11 @@ type Snapshotter interface {
 // adelantado ni atrasado respecto de la memoria. A esta escala alcanza; con
 // más volumen habría que pasar a un log append-only (ver README).
 type Store struct {
-	mu            sync.Mutex
-	byCode        map[string]model.Booking
-	byReservation map[string]string // reservationID → code
-	deliveries    map[string]model.Delivery
-	snap          Snapshotter
+	mu                 sync.Mutex
+	bookingsByCode     map[string]model.Booking
+	codesByReservation map[string]string // reservationID → code
+	deliveriesByCode   map[string]model.Delivery
+	snap               Snapshotter
 }
 
 // NewStore arma el store y restaura el estado previo del Snapshotter. Las
@@ -43,10 +43,10 @@ type Store struct {
 // las vuelve a ver en Due().
 func NewStore(ctx context.Context, snap Snapshotter) (*Store, error) {
 	s := &Store{
-		byCode:        make(map[string]model.Booking),
-		byReservation: make(map[string]string),
-		deliveries:    make(map[string]model.Delivery),
-		snap:          snap,
+		bookingsByCode:     make(map[string]model.Booking),
+		codesByReservation: make(map[string]string),
+		deliveriesByCode:   make(map[string]model.Delivery),
+		snap:               snap,
 	}
 
 	loaded, err := snap.Load(ctx)
@@ -54,11 +54,11 @@ func NewStore(ctx context.Context, snap Snapshotter) (*Store, error) {
 		return nil, fmt.Errorf("loading snapshot: %w", err)
 	}
 	for _, b := range loaded.Bookings {
-		s.byCode[b.Code] = b
-		s.byReservation[b.ReservationID] = b.Code
+		s.bookingsByCode[b.Code] = b
+		s.codesByReservation[b.ReservationID] = b.Code
 	}
 	for _, d := range loaded.Deliveries {
-		s.deliveries[d.Code] = d
+		s.deliveriesByCode[d.Code] = d
 	}
 	return s, nil
 }
@@ -73,22 +73,22 @@ func (s *Store) CreateWithDelivery(ctx context.Context, b model.Booking, d model
 	defer s.mu.Unlock()
 
 	// Idempotencia: la misma reserva nunca recibe un segundo código.
-	if code, ok := s.byReservation[b.ReservationID]; ok {
-		return s.byCode[code], false, nil
+	if code, ok := s.codesByReservation[b.ReservationID]; ok {
+		return s.bookingsByCode[code], false, nil
 	}
-	if _, taken := s.byCode[b.Code]; taken {
+	if _, taken := s.bookingsByCode[b.Code]; taken {
 		return model.Booking{}, false, model.ErrCodeCollision
 	}
 
-	s.byCode[b.Code] = b
-	s.byReservation[b.ReservationID] = b.Code
-	s.deliveries[d.Code] = d
+	s.bookingsByCode[b.Code] = b
+	s.codesByReservation[b.ReservationID] = b.Code
+	s.deliveriesByCode[d.Code] = d
 
 	if err := s.persistLocked(ctx); err != nil {
 		// Revertimos para que la memoria siga reflejando lo persistido.
-		delete(s.byCode, b.Code)
-		delete(s.byReservation, b.ReservationID)
-		delete(s.deliveries, d.Code)
+		delete(s.bookingsByCode, b.Code)
+		delete(s.codesByReservation, b.ReservationID)
+		delete(s.deliveriesByCode, d.Code)
 		return model.Booking{}, false, err
 	}
 	return b, true, nil
@@ -103,7 +103,7 @@ func (s *Store) GetByCode(ctx context.Context, code string) (model.Booking, erro
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	b, ok := s.byCode[code]
+	b, ok := s.bookingsByCode[code]
 	if !ok {
 		return model.Booking{}, model.ErrNotFound
 	}
@@ -120,7 +120,7 @@ func (s *Store) Due(ctx context.Context, now time.Time, limit int) ([]model.Deli
 	defer s.mu.Unlock()
 
 	var due []model.Delivery
-	for _, d := range s.deliveries {
+	for _, d := range s.deliveriesByCode {
 		if d.Status != model.DeliveryAcked && !d.NextAttemptAt.After(now) {
 			due = append(due, d)
 		}
@@ -147,7 +147,7 @@ func (s *Store) RecordAttempt(ctx context.Context, code string, nextAttemptAt ti
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	d, ok := s.deliveries[code]
+	d, ok := s.deliveriesByCode[code]
 	if !ok {
 		return model.ErrNotFound
 	}
@@ -162,10 +162,10 @@ func (s *Store) RecordAttempt(ctx context.Context, code string, nextAttemptAt ti
 	d.Attempts++
 	d.NextAttemptAt = nextAttemptAt
 	d.LastError = lastErr
-	s.deliveries[code] = d
+	s.deliveriesByCode[code] = d
 
 	if err := s.persistLocked(ctx); err != nil {
-		s.deliveries[code] = previous
+		s.deliveriesByCode[code] = previous
 		return err
 	}
 	return nil
@@ -180,7 +180,7 @@ func (s *Store) MarkAcked(ctx context.Context, code string, at time.Time) error 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	d, ok := s.deliveries[code]
+	d, ok := s.deliveriesByCode[code]
 	if !ok {
 		return model.ErrNotFound
 	}
@@ -192,10 +192,10 @@ func (s *Store) MarkAcked(ctx context.Context, code string, at time.Time) error 
 	d.Status = model.DeliveryAcked
 	d.AckedAt = &at
 	d.LastError = ""
-	s.deliveries[code] = d
+	s.deliveriesByCode[code] = d
 
 	if err := s.persistLocked(ctx); err != nil {
-		s.deliveries[code] = previous
+		s.deliveriesByCode[code] = previous
 		return err
 	}
 	return nil
@@ -210,7 +210,7 @@ func (s *Store) Get(ctx context.Context, code string) (model.Delivery, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	d, ok := s.deliveries[code]
+	d, ok := s.deliveriesByCode[code]
 	if !ok {
 		return model.Delivery{}, model.ErrNotFound
 	}
@@ -225,13 +225,13 @@ func (s *Store) persistLocked(ctx context.Context) error {
 // snapshotLocked copia el estado a un Snapshot ordenado (salida estable).
 func (s *Store) snapshotLocked() Snapshot {
 	snap := Snapshot{
-		Bookings:   make([]model.Booking, 0, len(s.byCode)),
-		Deliveries: make([]model.Delivery, 0, len(s.deliveries)),
+		Bookings:   make([]model.Booking, 0, len(s.bookingsByCode)),
+		Deliveries: make([]model.Delivery, 0, len(s.deliveriesByCode)),
 	}
-	for _, b := range s.byCode {
+	for _, b := range s.bookingsByCode {
 		snap.Bookings = append(snap.Bookings, b)
 	}
-	for _, d := range s.deliveries {
+	for _, d := range s.deliveriesByCode {
 		snap.Deliveries = append(snap.Deliveries, d)
 	}
 	sort.Slice(snap.Bookings, func(i, j int) bool { return snap.Bookings[i].Code < snap.Bookings[j].Code })
