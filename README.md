@@ -233,7 +233,7 @@ Si alguno de estos no coincide con lo que esperaban, los cuatro están aislados 
 ## Tests
 
 ```bash
-make test     # -race, 111 casos
+make test     # -race, 118 casos
 make cover
 ```
 
@@ -254,7 +254,7 @@ make cover
 | Handlers con `httptest`, incluido que el POST no filtre el código | `internal/handler/router_test.go` |
 | El dispositivo muestra cada código una sola vez, con 100 notificaciones simultáneas | `cmd/guest/main_test.go` |
 
-Cobertura: `internal/service` 96.6%, `internal/worker` 96.1%, `internal/repository` 94.2%, `internal/client` 93.8%, `internal/handler` 86.0%, `internal/config` 100%. `cmd/server` queda sin cubrir: es solo el wiring y el graceful shutdown.
+Cobertura: `internal/service` 96.6%, `internal/worker` 96.1%, `internal/repository` 94.2%, `internal/client` 93.8%, `internal/handler` 88.2%, `internal/config` 100%. `cmd/server` queda sin cubrir: es solo el wiring y el graceful shutdown.
 
 ---
 
