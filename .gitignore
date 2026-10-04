@@ -11,6 +11,3 @@ coverage.out
 # macOS / editores
 .DS_Store
 .idea/
-
-# Plan de implementación (local, no se publica)
-booking-confirmation-plan.md
