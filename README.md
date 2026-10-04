@@ -297,7 +297,5 @@ Lo que está acá es deliberadamente lo más simple que cumple la consigna. En p
 
 ## Preguntas que le haría al equipo
 
-1. Si el ack se pierde y reenviamos, ¿alcanza con que el dispositivo deduplique, o "nunca dos veces" es más estricto que eso?
-2. ¿Los códigos tienen que ser case-sensitive?
-3. ¿Un POST repetido con el mismo `reservationId` debe ser idempotente, o cada llamada es una reserva nueva?
-4. ¿Hace falta un máximo de intentos y una DLQ, o reintentar indefinidamente es el comportamiento deseado?
+1. ¿Un POST repetido con el mismo `reservationId` debe ser idempotente, o cada llamada es una reserva nueva?
+2. ¿Hace falta un máximo de intentos y una DLQ, o reintentar indefinidamente es el comportamiento deseado?
